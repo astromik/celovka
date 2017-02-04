@@ -5,3 +5,6 @@ Detaily:
 
 Video s ukázkou činnosti (verze sw 11):
    https://youtu.be/cCZswjiehJQ
+
+Video s doplněnými funkcemi (verze sw 12):
+   https://youtu.be/9VESLbRYwD0

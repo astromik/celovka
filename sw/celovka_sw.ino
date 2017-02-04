@@ -1,7 +1,7 @@
 //============================================
 // Astronomicka celovka s obvodem ATtiny25
-//               verze 11
-//            (10.11.2015)
+//               verze 12
+//              (2.4.2016)
 //============================================
 //   3 tlacitka, prepinani cervenych a bilych LED s nastavitelnou intenzitou obou LED
 //   a s moznosti prechodu do rezimu minimalni spotreby.
@@ -30,7 +30,18 @@
 // LowFUSE  : 0xE2
 // HighFUSE : 0xD7
 //
-// velikost prelozeneho programu 1958 Bajtu
+// velikost prelozeneho programu 2046 Bajtu 
+
+
+
+// Seznam zmen proti verzi 11 (z 10.11.2015):
+//---------------------------------
+//  Tlacitko RED (tlacitko_1) ma dve nove funkce:
+//       1) pri rozsvicene cervene LED je mozne tuto LED stejnym tlacitkem zase zhasnout - neni tedy treba prehmatavat na tlacitko_3 (OFF)
+//       2) pri stisku tohoto tlacitka na dele nez 1 sekundu se pri jeho uvolneni cervena LED automaticky zhasne - tlacitko funguje jako normalni tlacitko
+//  Kvuli velikosti programu bylo nutne ve funkci BLIKAC ubrat nejpomalejsi rezim blikani (1 sekunda svetlo, 15 sekund tma)
+
+
 
 
 
@@ -49,13 +60,14 @@ volatile unsigned long starttime;      // pomocna promenna pro zjistovani delky 
 volatile byte blik_index = 3;          // promenna pro zjisteni rychlosti a stridy blikani bile LED v rezimu BLIKAC
 volatile byte posledni_barva = 1;      // promenna pro zapamatovani posledni pouzite barvy LED - kvuli funkci blikace, kdy pak bude blikat stejna LED (1=cervena , 2= bila)
 
-
 // ===================================================================
 // definice rezimu blikani (cas rozsvicene LED a cas zhasnute LED v ms)
 
-//  blik_index (rezim):   0      1      2      3      4      5      6      7
-int blik_cas_on [] = {    31,    63,   125,   250,   500,  1000,  1000,  1000};  // cas v ms po ktere ma LED v prislusnem rezimu svitit
-int blik_cas_off[] = {    94,   188,   375,   750,  1500,  3000,  7000, 15000};  // cas v ms po ktere ma byt LED v prislusnem rezimu zhasnuta
+
+//  blik_index (rezim):   0      1      2      3      4      5      6      
+int blik_cas_on [] = {    31,    63,   125,   250,   500,  1000 , 1000};  // cas v ms po ktery ma LED v prislusnem rezimu svitit
+int blik_cas_off[] = {    94,   188,   375,   750,  1500,  3000 , 7000};  // cas v ms po ktery ma byt LED v prislusnem rezimu zhasnuta
+
 
 //                                                                                             
 //  blik_index                                     vyznam                                           
@@ -67,7 +79,6 @@ int blik_cas_off[] = {    94,   188,   375,   750,  1500,  3000,  7000, 15000}; 
 //       4      =      0.5s svetlo,  1.5s tma, dohromady pedioda     2s =    0.5Hz / 25%   strida    
 //       5      =        1s svetlo,    3s tma, dohromady pedioda     4s =   0.25Hz / 25%   strida    
 //       6      =        1s svetlo,    7s tma, dohromady pedioda     8s =  0.125Hz / 12,5% strida  
-//       7      =        1s svetlo,   15s tma, dohromady pedioda    16s = 0.0625Hz / 6,25% strida  
 // =================================================================================
 
 
@@ -79,7 +90,7 @@ const byte logaritmy[] = {254,253,252,249,243,233,215,181,117,0};   // 0 = maxim
 
 
 // temhle podprogram je tu jen kvuli uspore mista ve FLASH pameti ATtiny25
-// volanim podprogramu "pauza_30()" se proti volání funkce "delay(30)" usetri v tomto programu 102 bajtu pameti
+// volanim podprogramu "pauza_30()" se proti volani funkce "delay(30)" usetri v tomto programu vice nez 100 bajtu pameti
 void pauza_30(void)
   {
     delay(30);
@@ -135,8 +146,8 @@ void blikred(void)
 
 
 // ===================================================================
-//  Rezim blikani bile LED podle nastavene frekvence s moznosti zmeny frekvence v 8 krocich od 8Hz do 0.0625Hz (8x za sekundu az 1x za 16 sekund)
-//  pro vyssi frekvence je strida napevno nastavena na 25% pri nizkych frekvencich (perioda 8 a 16 sekund) je ale maximalni delka svitu 1 sekunda 
+//  Rezim blikani LED podle nastavene frekvence s moznosti zmeny frekvence v 7 krocich od 8Hz do 0.125Hz (8x za sekundu az 1x za 8 sekund)
+//  pro vyssi frekvence je strida napevno nastavena na 25% pri nizke frekvenci (perioda 8 sekund) je ale maximalni delka svitu 1 sekunda 
 void rezimBLIK(void)
   {
 
@@ -187,16 +198,16 @@ void rezimBLIK(void)
         if (odejdi == true)  // kdyz byla prerusena vyckavaci pauza u zhasnute LED vyhodnoti se prave stisknute tlacitko
           {
             pauza_30();  // odruseni zakmitu tlacitek
-            if ((PINB & 0b00011100) == 0b00001100)        // kdyz bylo stisknuto tlacitko_1 (PB4) nastavi se index v definici rezimu blikani i 1 nize
+            if ((PINB & 0b00011100) == 0b00001100)        // kdyz bylo stisknuto tlacitko_1 (PB4) nastavi se index v definici rezimu blikani o 1 nize
               {
                 if (blik_index == 0 ) blik_index = 1;     // test podlezeni minimalniho indexu v definici blikani
                 blik_index -- ;
                 odejdi = false;                           // pokud bylo stisknuto tlacitko_1, neni to duvod ukoncit blikani 
               }
 
-            if ((PINB & 0b00011100) == 0b00010100)        // kdyz bylo stisknuto tlacitko_2 (PB3) nastavi se index v definici rezimu blikani i 1 vyse
+            if ((PINB & 0b00011100) == 0b00010100)        // kdyz bylo stisknuto tlacitko_2 (PB3) nastavi se index v definici rezimu blikani o 1 vyse
               {
-                if (blik_index == 7 ) blik_index = 6;     // test prekroceni maximalniho indexu v definici blikani
+                if (blik_index == 6 ) blik_index = 5;     // test prekroceni maximalniho indexu v definici blikani
                 blik_index ++ ;
                 odejdi = false;                           // pokud bylo stisknuto tlacitko_2, neni to duvod ukoncit blikani 
               }
@@ -272,7 +283,7 @@ void loop()
   {
 
     // ===================================================================
-    // stisk tlacitka_1 - obycejne rozsviceni cervene LED
+    // stisk tlacitka_1 - obycejne, okamzite rozsviceni cervene LED
     
     if (prave_sviti != 1 && (PINB & 0b00011100) == 0b00001100)   // kdyz nesviti cervena LED a je sepnute pouze tlacitko_1 (PB4='0'; PB2 a PB3 = '1')
       {
@@ -280,7 +291,33 @@ void loop()
         red_on(level_red);        // Rozsvit cervenou LED pozadovanym jasem
         posledni_barva = 1;       // pamet posledni svitici barvy LED - kvuli funkci BLIKAC 
 
+        starttime = millis();                            // zapamatovani casu rozsviceni kvuli funkci automatickeho zhasnuti pri delsim drzeni cerveneho tlacitka
+        pauza_30();  // odruseni zakmitu tlacitka_1
+        while ((PINB & 0b00011100) == 0b00001100)        // cekani na uvolneni cerveneho tlacitka
+          {
+            pauza_30();
+          }      
+        if (millis() > starttime + 1000)          // pokud bylo cervene tlacitko stisknute na delsi dobu, nez 1 sekunda, ...
+          {
+              obe_off();                          //  ... tak se po uvolneni cervena LED zase zhasne
+          }
       }
+
+
+
+    // ===================================================================
+    // stisk tlacitka_1 pri rozsvicene cervene LED, cervenou LED zhasina
+    
+    if (prave_sviti == 1 && (PINB & 0b00011100) == 0b00001100 )   // kdyz cervena LED sviti a je sepnute pouze tlacitko_1 (PB4='0'; PB2 a PB3 = '1')
+      {
+        obe_off();                                       // cervenou LED zhasnout
+        
+        pauza_30();  // odruseni zakmitu tlacitka_1
+        while ((PINB & 0b00011100) == 0b00001100)        // cekani na uvolneni cerveneho tlacitka (tlacitka_1)
+          {}
+        pauza_30(); 
+      }
+
 
 
 
